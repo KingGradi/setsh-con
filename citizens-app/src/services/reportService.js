@@ -176,6 +176,47 @@ class ReportService {
     }
   }
 
+  async checkNearbyReports(lat, lng, radius = 0.5, category = null) {
+    try {
+      const params = {
+        lat: lat.toString(),
+        lng: lng.toString(),
+        radius: radius.toString(),
+        limit: '20', // Limit to recent reports for duplicate checking
+      };
+
+      if (category) {
+        params.category = category;
+      }
+
+      // Get reports from last 7 days for duplicate detection
+      const sevenDaysAgo = new Date();
+      sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+      params.created_after = sevenDaysAgo.toISOString();
+
+      const queryParams = new URLSearchParams(params).toString();
+      const url = `${API_BASE_URL}${API_ENDPOINTS.REPORTS}?${queryParams}`;
+      
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      const data = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to fetch nearby reports');
+      }
+
+      return data.data.reports || [];
+    } catch (error) {
+      console.warn('Failed to check for nearby reports:', error);
+      return []; // Return empty array on error, don't block report creation
+    }
+  }
+
   async getStatusUpdates(reportId) {
     try {
       const url = API_ENDPOINTS.STATUS_UPDATES.replace('{reportId}', reportId);

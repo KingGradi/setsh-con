@@ -7,7 +7,7 @@ import { Ionicons } from '@expo/vector-icons';
 import ReportsScreen from '../screens/main/ReportsScreen';
 import ReportDetailScreen from '../screens/main/ReportDetailScreen';
 import CreateReportScreen from '../screens/main/CreateReportScreen';
-import MapScreen from '../screens/main/MapScreen';
+import AdaptiveMapScreen from '../components/maps/AdaptiveMapScreen';
 import ProfileScreen from '../screens/main/ProfileScreen';
 import MyReportsScreen from '../screens/main/MyReportsScreen';
 
@@ -25,7 +25,7 @@ const ReportsStack = () => (
 
 const MapStack = () => (
   <Stack.Navigator screenOptions={{ headerShown: false }}>
-    <Stack.Screen name="MapView" component={MapScreen} />
+    <Stack.Screen name="MapView" component={AdaptiveMapScreen} />
     <Stack.Screen name="ReportDetail" component={ReportDetailScreen} />
   </Stack.Navigator>
 );

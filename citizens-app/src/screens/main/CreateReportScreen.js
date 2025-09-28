@@ -14,8 +14,10 @@ import * as ImagePicker from 'expo-image-picker';
 import Input from '../../components/common/Input';
 import Button from '../../components/common/Button';
 import CategoryPicker from '../../components/reports/CategoryPicker';
+import DuplicateReportModal from '../../components/reports/DuplicateReportModal';
 import { useLocation } from '../../hooks/useLocation';
 import reportService from '../../services/reportService';
+import { findPotentialDuplicates } from '../../utils/duplicateDetection';
 
 const CreateReportScreen = ({ navigation }) => {
   const [formData, setFormData] = useState({
@@ -26,6 +28,9 @@ const CreateReportScreen = ({ navigation }) => {
   });
   const [loading, setLoading] = useState(false);
   const [locationData, setLocationData] = useState(null);
+  const [duplicateModalVisible, setDuplicateModalVisible] = useState(false);
+  const [potentialDuplicates, setPotentialDuplicates] = useState([]);
+  const [checkingDuplicates, setCheckingDuplicates] = useState(false);
   const { getCurrentLocation, reverseGeocode } = useLocation();
 
   useEffect(() => {
@@ -157,27 +162,91 @@ const CreateReportScreen = ({ navigation }) => {
     return true;
   };
 
+  const checkForDuplicates = async (reportData) => {
+    try {
+      setCheckingDuplicates(true);
+
+      // Get nearby reports from the backend
+      const nearbyReports = await reportService.checkNearbyReports(
+        reportData.lat,
+        reportData.lng,
+        0.5, // 500m radius
+        reportData.category
+      );
+
+      // Find potential duplicates using our detection algorithm
+      const duplicates = findPotentialDuplicates(reportData, nearbyReports, {
+        maxDistance: 0.5, // 500 meters
+        minKeywordSimilarity: 0.3, // 30% similarity
+        maxAgeHours: 168, // 7 days
+      });
+
+      return duplicates;
+    } catch (error) {
+      console.warn('Duplicate check failed:', error);
+      return []; // Continue with submission if duplicate check fails
+    } finally {
+      setCheckingDuplicates(false);
+    }
+  };
+
   const handleSubmit = async () => {
     if (!validateForm()) return;
+
+    const reportData = {
+      title: formData.title.trim(),
+      description: formData.description.trim(),
+      category: formData.category,
+      lat: locationData.lat,
+      lng: locationData.lng,
+      address: locationData.address,
+      photo_url: formData.photo_url || undefined,
+    };
 
     try {
       setLoading(true);
 
-      const reportData = {
-        title: formData.title.trim(),
-        description: formData.description.trim(),
-        category: formData.category,
-        lat: locationData.lat,
-        lng: locationData.lng,
-        address: locationData.address,
-        photo_url: formData.photo_url || undefined,
+      // Check for potential duplicates first
+      const duplicates = await checkForDuplicates(reportData);
+
+      if (duplicates.length > 0) {
+        // Show duplicate modal
+        setPotentialDuplicates(duplicates);
+        setDuplicateModalVisible(true);
+        setLoading(false);
+        return;
+      }
+
+      // No duplicates found, proceed with submission
+      await submitReport(reportData);
+    } catch (error) {
+      Alert.alert('Error', error.message);
+      setLoading(false);
+    }
+  };
+
+  const submitReport = async (reportData, flagAsPotentialDuplicate = false) => {
+    try {
+      setLoading(true);
+
+      // Add flag if this might be a duplicate
+      const finalReportData = {
+        ...reportData,
+        ...(flagAsPotentialDuplicate && { 
+          metadata: { 
+            flagged_as_potential_duplicate: true,
+            duplicate_check_performed: true,
+          }
+        }),
       };
 
-      await reportService.createReport(reportData);
+      await reportService.createReport(finalReportData);
 
       Alert.alert(
         'Success',
-        'Your report has been submitted successfully!',
+        flagAsPotentialDuplicate 
+          ? 'Your report has been submitted and flagged for review due to similar existing reports.'
+          : 'Your report has been submitted successfully!',
         [{ text: 'OK', onPress: () => navigation.goBack() }]
       );
     } catch (error) {
@@ -185,6 +254,47 @@ const CreateReportScreen = ({ navigation }) => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleUpvoteExisting = async (existingReport) => {
+    try {
+      setDuplicateModalVisible(false);
+      setLoading(true);
+
+      await reportService.upvoteReport(existingReport.id);
+
+      Alert.alert(
+        'Upvoted!',
+        'Thank you for supporting the existing report instead of creating a duplicate.',
+        [{ text: 'OK', onPress: () => navigation.goBack() }]
+      );
+    } catch (error) {
+      Alert.alert('Error', 'Failed to upvote report: ' + error.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleContinueWithNew = () => {
+    setDuplicateModalVisible(false);
+    
+    const reportData = {
+      title: formData.title.trim(),
+      description: formData.description.trim(),
+      category: formData.category,
+      lat: locationData.lat,
+      lng: locationData.lng,
+      address: locationData.address,
+      photo_url: formData.photo_url || undefined,
+    };
+
+    // Submit with duplicate flag
+    submitReport(reportData, true);
+  };
+
+  const handleViewExisting = (existingReport) => {
+    setDuplicateModalVisible(false);
+    navigation.navigate('ReportDetail', { reportId: existingReport.id });
   };
 
   return (
@@ -249,14 +359,30 @@ const CreateReportScreen = ({ navigation }) => {
           )}
         </View>
 
+        {checkingDuplicates && (
+          <View style={styles.checkingContainer}>
+            <Ionicons name="search" size={16} color="#2196F3" />
+            <Text style={styles.checkingText}>Checking for similar reports nearby...</Text>
+          </View>
+        )}
+
         <Button
-          title="Submit Report"
+          title={checkingDuplicates ? "Checking for duplicates..." : "Submit Report"}
           onPress={handleSubmit}
-          loading={loading}
+          loading={loading || checkingDuplicates}
           disabled={!locationData}
           style={styles.submitButton}
         />
       </ScrollView>
+
+      <DuplicateReportModal
+        visible={duplicateModalVisible}
+        onClose={() => setDuplicateModalVisible(false)}
+        duplicates={potentialDuplicates}
+        onUpvoteExisting={handleUpvoteExisting}
+        onContinueWithNew={handleContinueWithNew}
+        onViewExisting={handleViewExisting}
+      />
     </SafeAreaView>
   );
 };
@@ -349,6 +475,21 @@ const styles = StyleSheet.create({
   },
   submitButton: {
     marginTop: 16,
+  },
+  checkingContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#e3f2fd',
+    padding: 12,
+    borderRadius: 8,
+    marginBottom: 16,
+  },
+  checkingText: {
+    marginLeft: 8,
+    fontSize: 14,
+    color: '#2196F3',
+    fontWeight: '500',
   },
 });
 

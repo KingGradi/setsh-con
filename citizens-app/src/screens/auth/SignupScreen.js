@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   View,
   Text,
@@ -12,6 +12,14 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import Input from '../../components/common/Input';
 import Button from '../../components/common/Button';
 import { useAuth } from '../../hooks/useAuth';
+import {
+  validateEmail,
+  validatePassword,
+  validatePasswordConfirmation,
+  validateName,
+  getValidationStatus,
+  areAllValidationsValid,
+} from '../../utils/validationUtils';
 
 const SignupScreen = ({ navigation }) => {
   const [formData, setFormData] = useState({
