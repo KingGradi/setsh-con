@@ -189,13 +189,13 @@ class ReportService {
         params.category = category;
       }
 
-      // Get reports from last 7 days for duplicate detection
-      const sevenDaysAgo = new Date();
-      sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-      params.created_after = sevenDaysAgo.toISOString();
+      // Don't use created_after parameter as it might not be supported by backend
+      // We'll filter by date on the frontend if needed
 
       const queryParams = new URLSearchParams(params).toString();
       const url = `${API_BASE_URL}${API_ENDPOINTS.REPORTS}?${queryParams}`;
+      
+      console.log('Checking nearby reports:', url);
       
       const response = await fetch(url, {
         method: 'GET',
@@ -204,15 +204,38 @@ class ReportService {
         },
       });
 
-      const data = await response.json();
-      
+      console.log('Nearby reports response status:', response.status);
+
       if (!response.ok) {
-        throw new Error(data.error || 'Failed to fetch nearby reports');
+        // If the location-based API call fails, try without location parameters
+        console.log('Location-based search failed, trying general search');
+        const fallbackParams = { limit: '20' };
+        if (category) fallbackParams.category = category;
+        
+        const fallbackUrl = `${API_BASE_URL}${API_ENDPOINTS.REPORTS}?${new URLSearchParams(fallbackParams).toString()}`;
+        const fallbackResponse = await fetch(fallbackUrl, {
+          method: 'GET',
+          headers: { 'Content-Type': 'application/json' },
+        });
+
+        if (fallbackResponse.ok) {
+          const fallbackData = await fallbackResponse.json();
+          const allReports = fallbackData.data?.reports || fallbackData.reports || [];
+          console.log('Fallback search returned:', allReports.length, 'reports');
+          return allReports;
+        } else {
+          throw new Error('Both location-based and fallback searches failed');
+        }
       }
 
-      return data.data.reports || [];
+      const data = await response.json();
+      const reports = data.data?.reports || data.reports || [];
+      console.log('Nearby reports found:', reports.length);
+      
+      return reports;
     } catch (error) {
-      console.warn('Failed to check for nearby reports:', error);
+      console.warn('Failed to check for nearby reports:', error.message);
+      console.log('Returning empty array to allow report creation to continue');
       return []; // Return empty array on error, don't block report creation
     }
   }

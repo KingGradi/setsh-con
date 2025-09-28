@@ -1,11 +1,15 @@
 import React from 'react';
 import { View, ActivityIndicator, Text, StyleSheet } from 'react-native';
+import { useTheme } from '../../hooks/useInclusive';
 
-const LoadingSpinner = ({ message = 'Loading...', size = 'large', color = '#2196F3' }) => {
+const LoadingSpinner = ({ message = 'Loading...', size = 'large', color }) => {
+  const { theme } = useTheme();
+  const spinnerColor = color || theme.colors.primary;
+
   return (
-    <View style={styles.container}>
-      <ActivityIndicator size={size} color={color} />
-      {message && <Text style={styles.message}>{message}</Text>}
+    <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
+      <ActivityIndicator size={size} color={spinnerColor} />
+      {message && <Text style={[styles.message, { color: theme.colors.textSecondary }]}>{message}</Text>}
     </View>
   );
 };
@@ -20,7 +24,6 @@ const styles = StyleSheet.create({
   message: {
     marginTop: 10,
     fontSize: 16,
-    color: '#666',
     textAlign: 'center',
   },
 });

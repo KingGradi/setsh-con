@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { View, TextInput, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useTheme } from '../../hooks/useInclusive';
 
 const Input = ({
   label,
@@ -22,6 +23,7 @@ const Input = ({
 }) => {
   const [showPassword, setShowPassword] = useState(false);
   const [isFocused, setIsFocused] = useState(false);
+  const { theme } = useTheme();
 
   const togglePasswordVisibility = () => {
     setShowPassword(!showPassword);
@@ -36,7 +38,7 @@ const Input = ({
         <Ionicons
           name={isValid ? 'checkmark-circle' : 'close-circle'}
           size={20}
-          color={isValid ? '#4CAF50' : '#F44336'}
+          color={isValid ? theme.colors.success : theme.colors.error}
         />
       </View>
     );
@@ -52,11 +54,11 @@ const Input = ({
             <Ionicons
               name={rule.isValid ? 'checkmark-circle' : 'close-circle'}
               size={16}
-              color={rule.isValid ? '#4CAF50' : '#F44336'}
+              color={rule.isValid ? theme.colors.success : theme.colors.error}
             />
             <Text style={[
               styles.ruleText,
-              rule.isValid ? styles.validRuleText : styles.invalidRuleText
+              { color: rule.isValid ? theme.colors.success : theme.colors.error }
             ]}>
               {rule.text}
             </Text>
@@ -68,19 +70,30 @@ const Input = ({
 
   return (
     <View style={[styles.container, style]}>
-      {label && <Text style={styles.label}>{label}</Text>}
+      {label && <Text style={[styles.label, { color: theme.colors.text }]}>{label}</Text>}
       <View style={[
         styles.inputContainer,
-        isFocused && styles.focused,
-        error && styles.error,
-        validationStatus === 'valid' && styles.valid,
-        validationStatus === 'invalid' && styles.invalid,
+        { 
+          borderColor: theme.colors.inputBorder, 
+          backgroundColor: theme.colors.inputBackground 
+        },
+        isFocused && { borderColor: theme.colors.inputBorderFocused },
+        error && { borderColor: theme.colors.error },
+        validationStatus === 'valid' && { borderColor: theme.colors.success },
+        validationStatus === 'invalid' && { borderColor: theme.colors.error },
       ]}>
         <TextInput
-          style={[styles.input, inputStyle]}
+          style={[
+            styles.input, 
+            inputStyle, 
+            { 
+              color: theme.colors.inputText,
+            }
+          ]}
           value={value}
           onChangeText={onChangeText}
           placeholder={placeholder}
+          placeholderTextColor={theme.colors.inputPlaceholder}
           secureTextEntry={secureTextEntry && !showPassword}
           multiline={multiline}
           numberOfLines={numberOfLines}
@@ -100,13 +113,13 @@ const Input = ({
               <Ionicons
                 name={showPassword ? 'eye-off' : 'eye'}
                 size={20}
-                color="#666"
+                color={theme.colors.textSecondary}
               />
             </TouchableOpacity>
           )}
         </View>
       </View>
-      {error && <Text style={styles.errorText}>{error}</Text>}
+      {error && <Text style={[styles.errorText, { color: theme.colors.error }]}>{error}</Text>}
       {renderValidationRules()}
     </View>
   );
@@ -119,35 +132,19 @@ const styles = StyleSheet.create({
   label: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#333',
     marginBottom: 8,
   },
   inputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: '#ddd',
     borderRadius: 8,
-    backgroundColor: '#fff',
-  },
-  focused: {
-    borderColor: '#2196F3',
-  },
-  error: {
-    borderColor: '#F44336',
-  },
-  valid: {
-    borderColor: '#4CAF50',
-  },
-  invalid: {
-    borderColor: '#F44336',
   },
   input: {
     flex: 1,
     paddingHorizontal: 16,
     paddingVertical: 12,
     fontSize: 16,
-    color: '#333',
   },
   rightIcons: {
     flexDirection: 'row',
@@ -162,7 +159,6 @@ const styles = StyleSheet.create({
   errorText: {
     marginTop: 4,
     fontSize: 14,
-    color: '#F44336',
   },
   validationRules: {
     marginTop: 8,
@@ -177,12 +173,6 @@ const styles = StyleSheet.create({
     marginLeft: 8,
     fontSize: 13,
     flex: 1,
-  },
-  validRuleText: {
-    color: '#4CAF50',
-  },
-  invalidRuleText: {
-    color: '#F44336',
   },
 });
 

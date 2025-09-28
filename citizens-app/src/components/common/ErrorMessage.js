@@ -1,19 +1,25 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useTheme } from '../../hooks/useInclusive';
 
 const ErrorMessage = ({ 
   message = 'Something went wrong', 
   onRetry, 
   retryText = 'Try Again' 
 }) => {
+  const { theme } = useTheme();
+
   return (
-    <View style={styles.container}>
-      <Ionicons name="alert-circle-outline" size={48} color="#F44336" />
-      <Text style={styles.message}>{message}</Text>
+    <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
+      <Ionicons name="alert-circle-outline" size={48} color={theme.colors.error} />
+      <Text style={[styles.message, { color: theme.colors.textSecondary }]}>{message}</Text>
       {onRetry && (
-        <TouchableOpacity style={styles.retryButton} onPress={onRetry}>
-          <Text style={styles.retryText}>{retryText}</Text>
+        <TouchableOpacity 
+          style={[styles.retryButton, { backgroundColor: theme.colors.primary }]} 
+          onPress={onRetry}
+        >
+          <Text style={[styles.retryText, { color: theme.colors.textInverse }]}>{retryText}</Text>
         </TouchableOpacity>
       )}
     </View>
@@ -31,18 +37,15 @@ const styles = StyleSheet.create({
     marginTop: 16,
     marginBottom: 20,
     fontSize: 16,
-    color: '#666',
     textAlign: 'center',
     lineHeight: 24,
   },
   retryButton: {
-    backgroundColor: '#2196F3',
     paddingHorizontal: 24,
     paddingVertical: 12,
     borderRadius: 8,
   },
   retryText: {
-    color: '#fff',
     fontSize: 16,
     fontWeight: '600',
   },

@@ -2,6 +2,7 @@ import React from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createStackNavigator } from '@react-navigation/stack';
 import { Ionicons } from '@expo/vector-icons';
+import { useTheme } from '../hooks/useInclusive';
 
 // Screens
 import ReportsScreen from '../screens/main/ReportsScreen';
@@ -10,6 +11,7 @@ import CreateReportScreen from '../screens/main/CreateReportScreen';
 import AdaptiveMapScreen from '../components/maps/AdaptiveMapScreen';
 import ProfileScreen from '../screens/main/ProfileScreen';
 import MyReportsScreen from '../screens/main/MyReportsScreen';
+import SettingsScreen from '../screens/main/SettingsScreen';
 
 const Tab = createBottomTabNavigator();
 const Stack = createStackNavigator();
@@ -34,12 +36,15 @@ const ProfileStack = () => (
   <Stack.Navigator screenOptions={{ headerShown: false }}>
     <Stack.Screen name="ProfileView" component={ProfileScreen} />
     <Stack.Screen name="MyReports" component={MyReportsScreen} />
+    <Stack.Screen name="Settings" component={SettingsScreen} />
     <Stack.Screen name="CreateReport" component={CreateReportScreen} />
     <Stack.Screen name="ReportDetail" component={ReportDetailScreen} />
   </Stack.Navigator>
 );
 
 const MainNavigator = () => {
+  const { theme } = useTheme();
+
   return (
     <Tab.Navigator
       screenOptions={({ route }) => ({
@@ -56,12 +61,12 @@ const MainNavigator = () => {
 
           return <Ionicons name={iconName} size={size} color={color} />;
         },
-        tabBarActiveTintColor: '#2196F3',
-        tabBarInactiveTintColor: '#666',
+        tabBarActiveTintColor: theme.colors.primary,
+        tabBarInactiveTintColor: theme.colors.textSecondary,
         tabBarStyle: {
-          backgroundColor: '#fff',
+          backgroundColor: theme.colors.surface,
           borderTopWidth: 1,
-          borderTopColor: '#eee',
+          borderTopColor: theme.colors.border,
           paddingBottom: 5,
           paddingTop: 5,
           height: 60,

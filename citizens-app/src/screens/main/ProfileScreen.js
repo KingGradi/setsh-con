@@ -10,6 +10,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import Input from '../../components/common/Input';
+import AddressInput from '../../components/common/AddressInput';
 import Button from '../../components/common/Button';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
 import ErrorMessage from '../../components/common/ErrorMessage';
@@ -131,16 +132,24 @@ const ProfileScreen = ({ navigation }) => {
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
         <Text style={styles.title}>Profile</Text>
-        <TouchableOpacity
-          style={styles.editButton}
-          onPress={() => setIsEditing(!isEditing)}
-        >
-          <Ionicons 
-            name={isEditing ? 'close' : 'pencil'} 
-            size={20} 
-            color="#2196F3" 
-          />
-        </TouchableOpacity>
+        <View style={styles.headerButtons}>
+          <TouchableOpacity
+            style={styles.settingsButton}
+            onPress={() => navigation.navigate('Settings')}
+          >
+            <Ionicons name="settings-outline" size={20} color="#2196F3" />
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.editButton}
+            onPress={() => setIsEditing(!isEditing)}
+          >
+            <Ionicons 
+              name={isEditing ? 'close' : 'pencil'} 
+              size={20} 
+              color="#2196F3" 
+            />
+          </TouchableOpacity>
+        </View>
       </View>
 
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
@@ -162,13 +171,11 @@ const ProfileScreen = ({ navigation }) => {
                 placeholder="Enter your full name"
               />
 
-              <Input
+              <AddressInput
                 label="Home Address"
                 value={formData.home_address}
                 onChangeText={(value) => updateFormData('home_address', value)}
                 placeholder="Enter your home address"
-                multiline
-                numberOfLines={2}
               />
 
               <View style={styles.buttonContainer}>
@@ -260,6 +267,14 @@ const styles = StyleSheet.create({
     fontSize: 24,
     fontWeight: 'bold',
     color: '#333',
+  },
+  headerButtons: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  settingsButton: {
+    padding: 8,
+    marginRight: 8,
   },
   editButton: {
     padding: 8,

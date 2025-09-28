@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Input from '../../components/common/Input';
+import AddressInput from '../../components/common/AddressInput';
 import Button from '../../components/common/Button';
 import { useAuth } from '../../hooks/useAuth';
 import {
@@ -32,35 +33,48 @@ const SignupScreen = ({ navigation }) => {
   const [loading, setLoading] = useState(false);
   const { signUp } = useAuth();
 
+  // Live validation using useMemo for performance
+  const nameValidation = useMemo(() => validateName(formData.name), [formData.name]);
+  const emailValidation = useMemo(() => validateEmail(formData.email), [formData.email]);
+  const passwordValidation = useMemo(() => validatePassword(formData.password), [formData.password]);
+  const confirmPasswordValidation = useMemo(
+    () => validatePasswordConfirmation(formData.password, formData.confirmPassword),
+    [formData.password, formData.confirmPassword]
+  );
+
+  // Check if form is valid for submission
+  const isFormValid = useMemo(() => {
+    return areAllValidationsValid(
+      nameValidation,
+      emailValidation,
+      passwordValidation,
+      confirmPasswordValidation
+    );
+  }, [nameValidation, emailValidation, passwordValidation, confirmPasswordValidation]);
+
   const updateFormData = (field, value) => {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
   const validateForm = () => {
-    const { name, email, password, confirmPassword } = formData;
-
-    if (!name.trim()) {
-      Alert.alert('Error', 'Please enter your name');
+    // Use live validation results instead of basic checks
+    if (!nameValidation.isValid) {
+      Alert.alert('Invalid Name', 'Please enter a valid full name');
       return false;
     }
 
-    if (!email.trim()) {
-      Alert.alert('Error', 'Please enter your email');
+    if (!emailValidation.isValid) {
+      Alert.alert('Invalid Email', 'Please enter a valid email address');
       return false;
     }
 
-    if (!email.includes('@')) {
-      Alert.alert('Error', 'Please enter a valid email address');
+    if (!passwordValidation.isValid) {
+      Alert.alert('Weak Password', 'Please ensure your password meets all requirements');
       return false;
     }
 
-    if (password.length < 6) {
-      Alert.alert('Error', 'Password must be at least 6 characters long');
-      return false;
-    }
-
-    if (password !== confirmPassword) {
-      Alert.alert('Error', 'Passwords do not match');
+    if (!confirmPasswordValidation.isValid) {
+      Alert.alert('Password Mismatch', 'Please ensure passwords match');
       return false;
     }
 
@@ -118,6 +132,9 @@ const SignupScreen = ({ navigation }) => {
               value={formData.name}
               onChangeText={(value) => updateFormData('name', value)}
               placeholder="Enter your full name"
+              validationStatus={formData.name ? getValidationStatus(nameValidation) : null}
+              validationRules={formData.name ? nameValidation.rules : []}
+              showValidationIndicator={formData.name.length > 0}
             />
 
             <Input
@@ -127,14 +144,20 @@ const SignupScreen = ({ navigation }) => {
               placeholder="Enter your email"
               keyboardType="email-address"
               autoCapitalize="none"
+              validationStatus={formData.email ? getValidationStatus(emailValidation) : null}
+              validationRules={formData.email ? emailValidation.rules : []}
+              showValidationIndicator={formData.email.length > 0}
             />
 
             <Input
               label="Password"
               value={formData.password}
               onChangeText={(value) => updateFormData('password', value)}
-              placeholder="Create a password"
+              placeholder="Create a strong password"
               secureTextEntry
+              validationStatus={formData.password ? getValidationStatus(passwordValidation) : null}
+              validationRules={formData.password ? passwordValidation.rules : []}
+              showValidationIndicator={formData.password.length > 0}
             />
 
             <Input
@@ -143,22 +166,28 @@ const SignupScreen = ({ navigation }) => {
               onChangeText={(value) => updateFormData('confirmPassword', value)}
               placeholder="Confirm your password"
               secureTextEntry
+              validationStatus={formData.confirmPassword ? getValidationStatus(confirmPasswordValidation) : null}
+              validationRules={formData.confirmPassword ? confirmPasswordValidation.rules : []}
+              showValidationIndicator={formData.confirmPassword.length > 0}
             />
 
-            <Input
+            <AddressInput
               label="Home Address (Optional)"
               value={formData.homeAddress}
               onChangeText={(value) => updateFormData('homeAddress', value)}
-              placeholder="Enter your home address"
-              multiline
-              numberOfLines={2}
+              placeholder="Enter your home address or use GPS"
+              style={styles.addressInput}
             />
 
             <Button
               title="Create Account"
               onPress={handleSignup}
               loading={loading}
-              style={styles.signupButton}
+              disabled={!isFormValid || loading}
+              style={[
+                styles.signupButton,
+                !isFormValid && styles.disabledButton
+              ]}
             />
 
             <Button
@@ -212,6 +241,12 @@ const styles = StyleSheet.create({
   },
   loginButton: {
     marginTop: 8,
+  },
+  disabledButton: {
+    opacity: 0.6,
+  },
+  addressInput: {
+    marginBottom: 24,
   },
 });
 

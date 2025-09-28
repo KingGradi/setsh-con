@@ -12,6 +12,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import Input from '../../components/common/Input';
+import AddressInput from '../../components/common/AddressInput';
 import Button from '../../components/common/Button';
 import CategoryPicker from '../../components/reports/CategoryPicker';
 import DuplicateReportModal from '../../components/reports/DuplicateReportModal';
@@ -25,6 +26,7 @@ const CreateReportScreen = ({ navigation }) => {
     description: '',
     category: '',
     photo_url: '',
+    address: '', // Add address to form data
   });
   const [loading, setLoading] = useState(false);
   const [locationData, setLocationData] = useState(null);
@@ -42,19 +44,20 @@ const CreateReportScreen = ({ navigation }) => {
       const location = await getCurrentLocation();
       const address = await reverseGeocode(location.latitude, location.longitude);
       
-      setLocationData({
+      const locationInfo = {
         lat: location.latitude,
         lng: location.longitude,
         address,
-      });
+      };
+      
+      setLocationData(locationInfo);
+      // Auto-populate the address field
+      updateFormData('address', address);
     } catch (error) {
       Alert.alert(
         'Location Error',
-        'Unable to get your location. Please ensure location permissions are enabled.',
-        [
-          { text: 'Cancel', onPress: () => navigation.goBack() },
-          { text: 'Retry', onPress: getLocationData },
-        ]
+        'Unable to get your location automatically. Please enter your address manually or use the GPS button.',
+        [{ text: 'OK' }]
       );
     }
   };
@@ -127,7 +130,7 @@ const CreateReportScreen = ({ navigation }) => {
   };
 
   const validateForm = () => {
-    const { title, description, category } = formData;
+    const { title, description, category, address } = formData;
 
     if (!title.trim()) {
       Alert.alert('Error', 'Please enter a title');
@@ -154,8 +157,8 @@ const CreateReportScreen = ({ navigation }) => {
       return false;
     }
 
-    if (!locationData) {
-      Alert.alert('Error', 'Location data is required');
+    if (!address || !address.trim()) {
+      Alert.alert('Error', 'Please enter the location address');
       return false;
     }
 
@@ -165,6 +168,7 @@ const CreateReportScreen = ({ navigation }) => {
   const checkForDuplicates = async (reportData) => {
     try {
       setCheckingDuplicates(true);
+      console.log('Checking for duplicate reports near:', reportData.lat, reportData.lng);
 
       // Get nearby reports from the backend
       const nearbyReports = await reportService.checkNearbyReports(
@@ -174,6 +178,8 @@ const CreateReportScreen = ({ navigation }) => {
         reportData.category
       );
 
+      console.log('Found', nearbyReports.length, 'nearby reports for duplicate checking');
+
       // Find potential duplicates using our detection algorithm
       const duplicates = findPotentialDuplicates(reportData, nearbyReports, {
         maxDistance: 0.5, // 500 meters
@@ -181,9 +187,20 @@ const CreateReportScreen = ({ navigation }) => {
         maxAgeHours: 168, // 7 days
       });
 
+      console.log('Detected', duplicates.length, 'potential duplicates');
+
       return duplicates;
     } catch (error) {
-      console.warn('Duplicate check failed:', error);
+      console.warn('Duplicate check failed:', error.message);
+      // Show a non-blocking notification that duplicate check failed
+      // but allow the user to continue
+      setTimeout(() => {
+        Alert.alert(
+          'Note',
+          'Could not check for duplicate reports, but you can still submit your report.',
+          [{ text: 'OK' }]
+        );
+      }, 100);
       return []; // Continue with submission if duplicate check fails
     } finally {
       setCheckingDuplicates(false);
@@ -193,34 +210,49 @@ const CreateReportScreen = ({ navigation }) => {
   const handleSubmit = async () => {
     if (!validateForm()) return;
 
+    // Try to get coordinates from locationData, or geocode the address
+    let lat = locationData?.lat;
+    let lng = locationData?.lng;
+    let finalAddress = formData.address.trim();
+
+    // If we don't have coordinates but have an address, we'll use the address
+    // The backend can handle geocoding if needed
+    if (!lat || !lng) {
+      console.log('No coordinates available, using address only');
+    }
+
     const reportData = {
       title: formData.title.trim(),
       description: formData.description.trim(),
       category: formData.category,
-      lat: locationData.lat,
-      lng: locationData.lng,
-      address: locationData.address,
+      lat: lat || null,
+      lng: lng || null,
+      address: finalAddress,
       photo_url: formData.photo_url || undefined,
     };
+
+    console.log('Submitting report:', reportData);
 
     try {
       setLoading(true);
 
-      // Check for potential duplicates first
-      const duplicates = await checkForDuplicates(reportData);
-
-      if (duplicates.length > 0) {
-        // Show duplicate modal
-        setPotentialDuplicates(duplicates);
-        setDuplicateModalVisible(true);
-        setLoading(false);
-        return;
+      // Check for potential duplicates first if we have coordinates
+      if (lat && lng) {
+        const duplicates = await checkForDuplicates(reportData);
+        if (duplicates.length > 0) {
+          // Show duplicate modal
+          setPotentialDuplicates(duplicates);
+          setDuplicateModalVisible(true);
+          setLoading(false);
+          return;
+        }
       }
 
       // No duplicates found, proceed with submission
       await submitReport(reportData);
     } catch (error) {
-      Alert.alert('Error', error.message);
+      console.error('Unexpected error during report submission:', error);
+      Alert.alert('Error', error.message || 'Something went wrong. Please try again.');
       setLoading(false);
     }
   };
@@ -332,15 +364,26 @@ const CreateReportScreen = ({ navigation }) => {
           onSelectCategory={(category) => updateFormData('category', category)}
         />
 
-        <View style={styles.locationContainer}>
-          <Text style={styles.label}>Location</Text>
-          <View style={styles.locationInfo}>
-            <Ionicons name="location-outline" size={20} color="#2196F3" />
-            <Text style={styles.locationText}>
-              {locationData ? locationData.address : 'Getting location...'}
-            </Text>
-          </View>
-        </View>
+        <AddressInput
+          label="Location"
+          value={formData.address}
+          onChangeText={(value) => {
+            updateFormData('address', value);
+            // Clear existing location data when user manually changes address
+            setLocationData(null);
+          }}
+          placeholder="Enter the location of the issue"
+          onLocationSelected={(address, coordinates) => {
+            updateFormData('address', address);
+            if (coordinates) {
+              setLocationData({
+                lat: coordinates.lat,
+                lng: coordinates.lng,
+                address: address,
+              });
+            }
+          }}
+        />
 
         <View style={styles.photoContainer}>
           <Text style={styles.label}>Photo (Optional)</Text>
@@ -370,7 +413,7 @@ const CreateReportScreen = ({ navigation }) => {
           title={checkingDuplicates ? "Checking for duplicates..." : "Submit Report"}
           onPress={handleSubmit}
           loading={loading || checkingDuplicates}
-          disabled={!locationData}
+          disabled={!formData.title.trim() || !formData.description.trim() || !formData.category || !formData.address.trim()}
           style={styles.submitButton}
         />
       </ScrollView>

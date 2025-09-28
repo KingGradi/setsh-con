@@ -18,9 +18,16 @@ const AdaptiveMapScreen = ({ navigation }) => {
 
   const determineMapMode = async () => {
     try {
+      // For development: Clear stored preferences to force re-detection
+      // Remove this in production
+      if (__DEV__) {
+        await AsyncStorage.multiRemove([STORAGE_KEY, PERFORMANCE_TEST_KEY]);
+      }
+
       // Check if user has manually set a preference
       const userPreference = await AsyncStorage.getItem(STORAGE_KEY);
       if (userPreference) {
+        console.log('Using user preference:', userPreference);
         setMapMode(userPreference);
         setLoading(false);
         return;
@@ -29,6 +36,7 @@ const AdaptiveMapScreen = ({ navigation }) => {
       // Check if we've already done a performance test
       const performanceResult = await AsyncStorage.getItem(PERFORMANCE_TEST_KEY);
       if (performanceResult) {
+        console.log('Using cached performance result:', performanceResult);
         setMapMode(performanceResult);
         setLoading(false);
         return;
@@ -37,6 +45,8 @@ const AdaptiveMapScreen = ({ navigation }) => {
       // Auto-detect based on device capabilities
       const shouldUseLightweight = await detectLowSpecDevice();
       const selectedMode = shouldUseLightweight ? 'lightweight' : 'full';
+      
+      console.log('Auto-detected map mode:', selectedMode);
       
       // Store the result for future use
       await AsyncStorage.setItem(PERFORMANCE_TEST_KEY, selectedMode);
@@ -52,40 +62,30 @@ const AdaptiveMapScreen = ({ navigation }) => {
 
   const detectLowSpecDevice = async () => {
     try {
-      // Android-specific checks
+      // For now, we'll be conservative and assume most Android devices need lightweight mode
       if (Platform.OS === 'android') {
-        // These are hypothetical checks - in a real app you'd use actual device info
-        // For now, we'll use simple heuristics
-        
-        // Check if we can determine device info
-        const deviceInfo = {
-          // These would come from a device info library
-          totalMemory: 4, // GB - this is a placeholder
-          apiLevel: Platform.Version,
-        };
+        // Default to lightweight for Android devices to ensure performance
+        // Users can manually switch to full map if their device can handle it
+        console.log('Android device detected - defaulting to lightweight mode for performance');
+        return true;
+      }
 
-        // Simple heuristics for low-spec detection
-        if (deviceInfo.totalMemory < 3) return true; // Less than 3GB RAM
-        if (Platform.Version < 23) return true; // Android 6.0 or lower
-        
-        // Additional checks could include:
-        // - CPU cores/speed
-        // - Available storage
-        // - GPU capabilities
-        
+      // iOS devices generally handle maps better, but still be conservative
+      if (Platform.OS === 'ios') {
+        const majorVersionIOS = parseInt(Platform.Version.split('.')[0], 10);
+        if (majorVersionIOS < 14) {
+          console.log('Older iOS version detected - using lightweight mode');
+          return true;
+        }
+        console.log('Modern iOS device detected - using full map mode');
         return false;
       }
 
-      // iOS devices are generally more uniform, but still check older devices
-      if (Platform.OS === 'ios') {
-        const majorVersionIOS = parseInt(Platform.Version.split('.')[0], 10);
-        return majorVersionIOS < 13; // iOS 13 or lower might struggle
-      }
-
-      return false;
+      // Default to lightweight for unknown platforms
+      return true;
     } catch (error) {
       console.log('Error detecting device capabilities:', error);
-      // Default to low-spec assumption for safety
+      // Default to lightweight for safety
       return true;
     }
   };

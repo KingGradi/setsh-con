@@ -180,9 +180,19 @@ const LightweightMapScreen = ({ navigation, currentMapMode, switchMapMode }) => 
 
       <View style={styles.infoBanner}>
         <Ionicons name="information-circle-outline" size={20} color="#2196F3" />
-        <Text style={styles.infoText}>
-          Map view is disabled for better performance. Reports are sorted by distance.
-        </Text>
+        <View style={styles.infoTextContainer}>
+          <Text style={styles.infoText}>
+            Using list view for better performance on your device.
+          </Text>
+          {switchMapMode && (
+            <TouchableOpacity
+              style={styles.switchModeLink}
+              onPress={() => switchMapMode('full')}
+            >
+              <Text style={styles.switchModeText}>Try Map View →</Text>
+            </TouchableOpacity>
+          )}
+        </View>
       </View>
 
       <FlatList
@@ -240,12 +250,23 @@ const styles = StyleSheet.create({
     borderLeftWidth: 4,
     borderLeftColor: '#2196F3',
   },
-  infoText: {
+  infoTextContainer: {
     flex: 1,
     marginLeft: 8,
+  },
+  infoText: {
     fontSize: 14,
     color: '#1976D2',
     lineHeight: 20,
+  },
+  switchModeLink: {
+    marginTop: 4,
+  },
+  switchModeText: {
+    fontSize: 13,
+    color: '#2196F3',
+    fontWeight: '600',
+    textDecorationLine: 'underline',
   },
   listContainer: {
     padding: 16,
