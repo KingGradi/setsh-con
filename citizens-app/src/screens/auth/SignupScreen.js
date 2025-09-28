@@ -7,6 +7,7 @@ import {
   Platform,
   ScrollView,
   Alert,
+  TouchableOpacity,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Input from '../../components/common/Input';
@@ -112,6 +113,14 @@ const SignupScreen = ({ navigation }) => {
     navigation.navigate('Login');
   };
 
+  const handleTermsPress = () => {
+    navigation.navigate('TermsOfService');
+  };
+
+  const handlePrivacyPress = () => {
+    navigation.navigate('PrivacyPolicy');
+  };
+
   return (
     <SafeAreaView style={styles.container}>
       <KeyboardAvoidingView
@@ -190,6 +199,17 @@ const SignupScreen = ({ navigation }) => {
               ]}
             />
 
+            <View style={styles.termsContainer}>
+              <Text style={styles.termsText}>By creating an account, you agree to our </Text>
+              <TouchableOpacity onPress={handleTermsPress}>
+                <Text style={styles.linkText}>Terms of Service</Text>
+              </TouchableOpacity>
+              <Text style={styles.termsText}> and </Text>
+              <TouchableOpacity onPress={handlePrivacyPress}>
+                <Text style={styles.linkText}>Privacy Policy</Text>
+              </TouchableOpacity>
+            </View>
+
             <Button
               title="Already have an account? Sign In"
               onPress={navigateToLogin}
@@ -238,6 +258,25 @@ const styles = StyleSheet.create({
   signupButton: {
     marginTop: 8,
     marginBottom: 16,
+  },
+  termsContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 16,
+    paddingHorizontal: 16,
+  },
+  termsText: {
+    fontSize: 12,
+    color: '#666',
+    lineHeight: 18,
+  },
+  linkText: {
+    fontSize: 12,
+    color: '#2196F3',
+    lineHeight: 18,
+    textDecorationLine: 'underline',
   },
   loginButton: {
     marginTop: 8,
